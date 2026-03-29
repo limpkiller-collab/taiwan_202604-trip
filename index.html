@@ -377,6 +377,52 @@
     .viz-menu-dropdown.open { opacity: 1; visibility: visible; transform: translateY(0); }
     .viz-menu-dropdown button { width: 100%; padding: 10px 14px; border: none; border-radius: 8px; background: transparent; color: var(--text); font-size: 14px; font-family: inherit; cursor: pointer; text-align: left; display: flex; align-items: center; gap: 10px; transition: background 0.15s; }
     .viz-menu-dropdown button:hover { background: var(--surface-hover); }
+
+    /* ===== EXPENSE TAB STYLES ===== */
+    .expense-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 28px; }
+    .summary-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; text-align: center; }
+    .summary-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .summary-value { font-size: 22px; font-weight: 700; color: var(--text); }
+    .expense-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .expense-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .expense-table th { background: var(--surface); color: var(--text-secondary); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; padding: 10px 12px; text-align: left; border-bottom: 2px solid var(--border); position: sticky; top: 0; }
+    .expense-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
+    .expense-table tr:hover td { background: var(--surface-hover); }
+    .expense-table .del-btn { background: none; border: none; cursor: pointer; font-size: 16px; opacity: 0.5; transition: opacity 0.2s; }
+    .expense-table .del-btn:hover { opacity: 1; }
+
+    /* Category Icon Grid */
+    .cat-icon-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 8px; }
+    .cat-icon-btn { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 4px; border: 2px solid var(--border); border-radius: 12px; background: var(--surface); cursor: pointer; transition: all 0.2s; }
+    .cat-icon-btn:hover { border-color: var(--accent); background: var(--surface-hover); }
+    .cat-icon-btn.selected { border-color: var(--accent); background: var(--accent); color: #fff; }
+    .cat-icon-btn.selected .cat-label { color: #fff; }
+    .cat-emoji { font-size: 22px; }
+    .cat-label { font-size: 11px; color: var(--text-secondary); font-weight: 500; }
+
+    /* Currency Toggle */
+    .currency-toggle { display: flex; gap: 4px; margin-bottom: 8px; }
+    .currency-btn { padding: 6px 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text-secondary); font-size: 13px; font-family: inherit; cursor: pointer; transition: all 0.2s; }
+    .currency-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .converted-hint { font-size: 12px; color: var(--text-secondary); margin-top: 6px; }
+
+    /* Day Expense Card */
+    .day-expense-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 18px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    .day-expense-card .expense-label { font-size: 13px; color: var(--text-secondary); }
+    .day-expense-card .expense-val { font-size: 16px; font-weight: 700; color: var(--text); }
+    .expense-progress { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; flex: 1; min-width: 80px; }
+    .expense-progress-bar { height: 100%; border-radius: 3px; background: var(--positive); transition: width 0.4s ease; }
+
+    @media (max-width: 600px) {
+      .cat-icon-grid { grid-template-columns: repeat(4, 1fr); gap: 6px; }
+      .cat-icon-btn { padding: 8px 2px; }
+      .cat-emoji { font-size: 18px; }
+      .cat-label { font-size: 10px; }
+      .expense-summary { grid-template-columns: 1fr; }
+      .expense-table { font-size: 12px; }
+      .expense-table th, .expense-table td { padding: 8px 6px; }
+      .day-expense-card { flex-direction: column; align-items: stretch; gap: 8px; }
+    }
   </style>
 </head>
 <body>
@@ -426,11 +472,14 @@
           <span class="kpi-value">25 / 20곳</span>
           <span class="kpi-sub">7개 지역별 분류</span>
         </div>
-        <div class="kpi-card animate delay-4">
+        <div class="kpi-card animate delay-4" id="kpiBudgetCard">
           <span class="kpi-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--day4)" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></span>
           <span class="kpi-label">예상 경비</span>
           <span class="kpi-value">~8,820 NTD</span>
           <span class="kpi-sub">약 397,000원 (항공 제외)</span>
+          <div id="kpiExpenseActual" style="margin-top:8px;font-size:12px;color:var(--text-secondary);">실제 사용: <strong id="kpiActualVal" style="color:var(--positive);">0 NTD</strong> <span id="kpiActualKrw">(₩0)</span></div>
+          <div class="expense-progress" style="margin-top:6px;"><div class="expense-progress-bar" id="kpiExpenseBar" style="width:0%;"></div></div>
+          <div id="kpiExpensePercent" style="font-size:11px;color:var(--text-secondary);margin-top:2px;">예산 대비 0%</div>
         </div>
       </div>
     </section>
@@ -443,6 +492,7 @@
         <button class="main-tab" role="tab" onclick="showPanel('cafe')">☕ 카페 <span style="font-size:11px;opacity:0.7;">(20)</span></button>
         <button class="main-tab" role="tab" onclick="showPanel('hotel')">🏨 숙소</button>
         <button class="main-tab" role="tab" onclick="showPanel('budget')">💰 예산</button>
+        <button class="main-tab" role="tab" onclick="showPanel('expense')">💸 사용경비</button>
         <button class="main-tab" role="tab" onclick="showPanel('info')">ℹ️ 정보</button>
       </div>
 
@@ -458,6 +508,11 @@
         <!-- DAY 1 -->
         <div class="day-content active" id="day1">
           <div class="day-header"><div class="day-number" style="background:var(--day1);">1</div><div class="day-meta"><h2>인천 출발 → 타이중 도착</h2><p>4월 17일 금요일 · 이동 + 시내 탐방 + 야시장</p></div></div>
+          <div class="day-expense-card" id="dayExpenseCard1">
+            <span class="expense-label">예상 경비: 756 NTD (₩34,020)</span> | 
+            <span class="expense-label">실제 사용: <span class="expense-value">0 NTD (₩0)</span></span>
+            <div class="expense-progress"><div class="expense-progress-bar"></div></div>
+          </div>
           <div class="timeline">
             <div class="tl-item"><div class="tl-dot" style="border-color:var(--day1);"></div><div class="tl-card">
               <div class="tl-time">11:30 ~ 13:55 KST</div>
@@ -527,6 +582,11 @@
         <!-- DAY 2 -->
         <div class="day-content" id="day2">
           <div class="day-header"><div class="day-number" style="background:var(--day2);">2</div><div class="day-meta"><h2>르웨탄(일월담) 데이트립</h2><p>4월 18일 토요일 · 호수 일일여행 + 야시장</p></div></div>
+          <div class="day-expense-card" id="dayExpenseCard2">
+            <span class="expense-label">예상 경비: 2,200 NTD (₩99,000)</span> | 
+            <span class="expense-label">실제 사용: <span class="expense-value">0 NTD (₩0)</span></span>
+            <div class="expense-progress"><div class="expense-progress-bar"></div></div>
+          </div>
           <div class="timeline">
             <div class="tl-item"><div class="tl-dot" style="border-color:var(--day2);"></div><div class="tl-card">
               <div class="tl-time">07:00 ~ 07:30</div>
@@ -604,6 +664,11 @@
         <!-- DAY 3 -->
         <div class="day-content" id="day3">
           <div class="day-header"><div class="day-number" style="background:var(--day3);">3</div><div class="day-meta"><h2>시내 여유 투어 &amp; 감성 카페</h2><p>4월 19일 일요일 · 관광 + 카페 + 고미습지 석양</p></div></div>
+          <div class="day-expense-card" id="dayExpenseCard3">
+            <span class="expense-label">예상 경비: 2,400 NTD (₩108,000)</span> | 
+            <span class="expense-label">실제 사용: <span class="expense-value">0 NTD (₩0)</span></span>
+            <div class="expense-progress"><div class="expense-progress-bar"></div></div>
+          </div>
           <div class="timeline">
             <div class="tl-item"><div class="tl-dot" style="border-color:var(--day3);"></div><div class="tl-card">
               <div class="tl-time">09:00 ~ 10:00</div>
@@ -682,6 +747,11 @@
         <!-- DAY 4 -->
         <div class="day-content" id="day4">
           <div class="day-header"><div class="day-number" style="background:var(--day4);">4</div><div class="day-meta"><h2>마지막 여유 &amp; 귀국</h2><p>4월 20일 월요일 · 오전 관광 + 오후 출발</p></div></div>
+          <div class="day-expense-card" id="dayExpenseCard4">
+            <span class="expense-label">예상 경비: 1,400 NTD (₩63,000)</span> | 
+            <span class="expense-label">실제 사용: <span class="expense-value">0 NTD (₩0)</span></span>
+            <div class="expense-progress"><div class="expense-progress-bar"></div></div>
+          </div>
           <div class="timeline">
             <div class="tl-item"><div class="tl-dot" style="border-color:var(--day4);"></div><div class="tl-card">
               <div class="tl-time">08:30 ~ 09:30</div>
@@ -1309,6 +1379,84 @@
         </div>
       </div>
 
+      <!-- ==================== PANEL: EXPENSE ==================== -->
+      <div class="main-panel" id="panel-expense">
+        <div style="margin-bottom: 32px;">
+          <h2 style="margin-bottom: 8px;">💸 사용경비</h2>
+          <p style="color: var(--text-secondary); font-size: 14px;">여행에서 사용한 실제 경비를 추적하세요</p>
+        </div>
+
+        <!-- Expense Summary Cards -->
+        <div class="expense-summary" id="expenseSummaryCards">
+          <div class="summary-card">
+            <div class="summary-label">총 사용액 (NTD)</div>
+            <div class="summary-value" id="totalNTD">0</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-label">총 사용액 (KRW)</div>
+            <div class="summary-value" id="totalKRW">₩0</div>
+          </div>
+          <div class="summary-card">
+            <div class="summary-label">예산 대비 사용률</div>
+            <div class="summary-value" id="budgetPercent">0%</div>
+            <div class="progress-bar-mini" style="background: var(--border); height: 4px; margin-top: 8px; border-radius: 2px; overflow: hidden;">
+              <div id="budgetProgressBar" style="background: var(--positive); height: 100%; width: 0%; transition: width 0.3s;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Expense Filters -->
+        <div style="margin-bottom: 24px;">
+          <h3 style="font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.05em;">날짜 필터</h3>
+          <div class="expense-filters">
+            <button class="region-btn active" onclick="filterExpenseByDate('all')">전체</button>
+            <button class="region-btn" onclick="filterExpenseByDate('1')">DAY1 (4/17)</button>
+            <button class="region-btn" onclick="filterExpenseByDate('2')">DAY2 (4/18)</button>
+            <button class="region-btn" onclick="filterExpenseByDate('3')">DAY3 (4/19)</button>
+            <button class="region-btn" onclick="filterExpenseByDate('4')">DAY4 (4/20)</button>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 24px;">
+          <h3 style="font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.05em;">카테고리 필터</h3>
+          <div class="expense-filters">
+            <button class="region-btn active" onclick="filterExpenseByCategory('all')">전체</button>
+            <button class="region-btn" onclick="filterExpenseByCategory('flight')">✈️ 항공</button>
+            <button class="region-btn" onclick="filterExpenseByCategory('hotel')">🏨 숙소</button>
+            <button class="region-btn" onclick="filterExpenseByCategory('meal')">🍜 식사</button>
+            <button class="region-btn" onclick="filterExpenseByCategory('cafe')">☕ 카페</button>
+            <button class="region-btn" onclick="filterExpenseByCategory('transport')">🚌 교통</button>
+            <button class="region-btn" onclick="filterExpenseByCategory('activity')">🎡 관광</button>
+            <button class="region-btn" onclick="filterExpenseByCategory('souvenir')">🎁 기념품</button>
+            <button class="region-btn" onclick="filterExpenseByCategory('etc')">📦 기타</button>
+          </div>
+        </div>
+
+        <!-- Expense Table -->
+        <div style="overflow-x: auto;">
+          <table class="expense-table">
+            <thead>
+              <tr>
+                <th>사용일자</th>
+                <th>카테고리</th>
+                <th>금액 (NTD)</th>
+                <th>금액 (KRW)</th>
+                <th>사용처</th>
+                <th>링크</th>
+                <th style="width: 40px;">삭제</th>
+              </tr>
+            </thead>
+            <tbody id="expenseTableBody">
+              <tr id="expenseEmptyState">
+                <td colspan="7" style="text-align: center; padding: 32px; color: var(--text-secondary);">
+                  아직 기록된 경비가 없습니다.<br><button class="btn-add" onclick="openModal('expense')" style="margin-top: 16px; padding: 8px 16px; font-size: 13px;">💸 +사용경비</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- ==================== PANEL: INFO ==================== -->
       <div class="main-panel" id="panel-info">
         <div class="info-section">
@@ -1442,8 +1590,84 @@
     </div>
   </div>
 
-  <footer class="footer container">
-    <p>타이중 여행 대시보드 v4 · 2026.03.29 · 환율 기준: 1 NTD ≈ 45 KRW</p>
+  <!-- ===== MODAL: 사용경비 추가 ===== -->
+  <div class="modal-overlay" id="modal-expense" onclick="if(event.target===this)closeModal('expense')">
+    <div class="modal-box">
+      <div class="modal-header"><span class="modal-title">💸 사용경비 추가</span><button class="modal-close" onclick="closeModal('expense')">✕</button></div>
+      
+      <div class="form-row">
+        <label>사용일자</label>
+        <input id="ef-date" type="date" value="" style="font-family: inherit;">
+      </div>
+
+      <div class="form-row">
+        <label>카테고리</label>
+        <div class="cat-icon-grid">
+          <button type="button" class="cat-icon-btn" data-cat="flight" onclick="selectExpenseCategory('flight', event)">
+            <span class="cat-emoji">✈️</span>
+            <span class="cat-label">항공권</span>
+          </button>
+          <button type="button" class="cat-icon-btn" data-cat="hotel" onclick="selectExpenseCategory('hotel', event)">
+            <span class="cat-emoji">🏨</span>
+            <span class="cat-label">숙소</span>
+          </button>
+          <button type="button" class="cat-icon-btn" data-cat="meal" onclick="selectExpenseCategory('meal', event)">
+            <span class="cat-emoji">🍜</span>
+            <span class="cat-label">식사</span>
+          </button>
+          <button type="button" class="cat-icon-btn" data-cat="cafe" onclick="selectExpenseCategory('cafe', event)">
+            <span class="cat-emoji">☕</span>
+            <span class="cat-label">카페/간식</span>
+          </button>
+          <button type="button" class="cat-icon-btn" data-cat="transport" onclick="selectExpenseCategory('transport', event)">
+            <span class="cat-emoji">🚌</span>
+            <span class="cat-label">교통</span>
+          </button>
+          <button type="button" class="cat-icon-btn" data-cat="activity" onclick="selectExpenseCategory('activity', event)">
+            <span class="cat-emoji">🎡</span>
+            <span class="cat-label">관광/체험</span>
+          </button>
+          <button type="button" class="cat-icon-btn" data-cat="souvenir" onclick="selectExpenseCategory('souvenir', event)">
+            <span class="cat-emoji">🎁</span>
+            <span class="cat-label">기념품</span>
+          </button>
+          <button type="button" class="cat-icon-btn" data-cat="etc" onclick="selectExpenseCategory('etc', event)">
+            <span class="cat-emoji">📦</span>
+            <span class="cat-label">기타</span>
+          </button>
+        </div>
+        <input id="ef-category" type="hidden" value="">
+      </div>
+
+      <div class="form-row">
+        <label>금액 입력</label>
+        <div class="currency-toggle">
+          <button type="button" class="currency-btn active" data-curr="NTD" onclick="toggleExpenseCurrency('NTD', event)">NTD</button>
+          <button type="button" class="currency-btn" data-curr="KRW" onclick="toggleExpenseCurrency('KRW', event)">KRW</button>
+        </div>
+        <input id="ef-amount" type="number" placeholder="금액 입력" min="0" step="0.01" onchange="updateExpenseConversion()" oninput="updateExpenseConversion()">
+        <div class="converted-hint">
+          <span id="ef-currency">NTD</span> → <span id="ef-converted">0 KRW</span>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label>사용처</label>
+        <input id="ef-place" type="text" placeholder="예: 펑지아 야시장" list="placeAutocompleteList">
+        <datalist id="placeAutocompleteList"></datalist>
+      </div>
+
+      <div class="form-row">
+        <label>링크 (선택사항)</label>
+        <input id="ef-link" type="text" placeholder="https://...">
+      </div>
+
+      <button class="btn-submit" onclick="submitExpense()">저장하기</button>
+    </div>
+  </div>
+
+  
+    <p>타이중 여행 대시보드 v10 · 2026.03.29 · 환율 기준: 1 NTD ≈ 45 KRW</p>
   </footer>
 
   <script>
@@ -1559,7 +1783,7 @@
       document.querySelectorAll('.main-tab').forEach(function(t) { t.classList.remove('active'); });
       document.getElementById('panel-' + name).classList.add('active');
       var tabs = document.querySelectorAll('.main-tab');
-      var map = { schedule: 0, food: 1, cafe: 2, hotel: 3, budget: 4, info: 5 };
+      var map = { schedule: 0, food: 1, cafe: 2, hotel: 3, budget: 4, expense: 5, info: 6 };
       if (tabs[map[name]]) tabs[map[name]].classList.add('active');
     }
 
@@ -1604,14 +1828,15 @@
     /* ===== EXPORT / IMPORT ===== */
     function exportData() {
       var data = {
-        _version: 'tc_v8',
+        _version: 'tc_v10',
         _exported: new Date().toLocaleString('ko-KR'),
         food:     lsLoad(LS.food),
         cafe:     lsLoad(LS.cafe),
         schedule: lsLoad(LS.schedule),
-        hotel:    lsLoad(LS.hotel)
+        hotel:    lsLoad(LS.hotel),
+        expense:  lsLoad(LS.expense)
       };
-      var total = data.food.length + data.cafe.length + data.schedule.length + data.hotel.length;
+      var total = data.food.length + data.cafe.length + data.schedule.length + data.hotel.length + data.expense.length;
       if (total === 0) { alert('저장된 항목이 없어요.\n추가한 맛집·카페·일정·숙소가 있을 때 사용하세요.'); return; }
       var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       var url  = URL.createObjectURL(blob);
@@ -1630,16 +1855,17 @@
       reader.onload = function(e) {
         try {
           var data = JSON.parse(e.target.result);
-          if (!data._version || data._version !== 'tc_v8') {
+          if (!data._version || data._version !== 'tc_v8' && data._version !== 'tc_v10') {
             alert('파일 형식이 맞지 않아요.\n이 대시보드에서 내보낸 파일만 불러올 수 있어요.'); return;
           }
-          var total = (data.food||[]).length + (data.cafe||[]).length + (data.schedule||[]).length + (data.hotel||[]).length;
+          var total = (data.food||[]).length + (data.cafe||[]).length + (data.schedule||[]).length + (data.hotel||[]).length + (data.expense||[]).length;
           if (!confirm('📥 ' + total + '개 항목을 불러올게요.\n기존에 저장된 내 데이터는 덮어씁니다.\n계속할까요?')) return;
 
           lsSave(LS.food,     data.food     || []);
           lsSave(LS.cafe,     data.cafe     || []);
           lsSave(LS.schedule, data.schedule || []);
           lsSave(LS.hotel,    data.hotel    || []);
+          lsSave(LS.expense,  data.expense  || []);
 
           // 기존 추가 카드 DOM 제거 후 재렌더
           document.querySelectorAll('[data-lid]').forEach(function(el){ el.remove(); });
@@ -1672,7 +1898,7 @@
     }
 
     /* ---- localStorage helpers ---- */
-    var LS = { food:'tc_v8_food', cafe:'tc_v8_cafe', schedule:'tc_v8_schedule', hotel:'tc_v8_hotel' };
+    var LS = { food:'tc_v8_food', cafe:'tc_v8_cafe', schedule:'tc_v8_schedule', hotel:'tc_v8_hotel', expense:'tc_v10_expense' };
     function lsLoad(key) { try { return JSON.parse(localStorage.getItem(key)||'[]'); } catch(e){ return []; } }
     function lsSave(key, arr) { try { localStorage.setItem(key, JSON.stringify(arr)); } catch(e){} }
     function lsAdd(key, data) {
@@ -1708,6 +1934,27 @@
         var panel = document.getElementById(p[0]);
         if (!panel || panel.querySelector('.panel-action-bar')) return;
         var bar = document.createElement('div'); bar.className = 'panel-action-bar';
+        
+        // Add expense button for schedule panel only
+        if (p[0] === 'panel-schedule') {
+          var expenseBtn = document.createElement('button'); expenseBtn.className = 'btn-add';
+          expenseBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> 💸 사용경비';
+          expenseBtn.onclick = function() { 
+            var today = new Date().toISOString().split('T')[0];
+            var activeDay = document.querySelector('.day-tab.active');
+            if (activeDay) {
+              var dayText = activeDay.textContent;
+              if (dayText.includes('1')) today = '2026-04-17';
+              else if (dayText.includes('2')) today = '2026-04-18';
+              else if (dayText.includes('3')) today = '2026-04-19';
+              else if (dayText.includes('4')) today = '2026-04-20';
+            }
+            document.getElementById('ef-date').value = today;
+            openModal('expense');
+          };
+          bar.appendChild(expenseBtn);
+        }
+        
         var btn = document.createElement('button'); btn.className = 'btn-add';
         btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> ' + p[2];
         (function(modal){ btn.onclick = function(){ openModal(modal); }; })(p[1]);
@@ -1715,6 +1962,7 @@
       });
       addDeleteToExisting();
       loadStoredItems();
+      updateExpenseDisplays();
       // Wire up confirm delete button
       document.getElementById('confirmDelBtn').onclick = function() {
         if (_pendingDel) _pendingDel();
@@ -1841,6 +2089,264 @@
 
     function deleteHotelCard(card) { showConfirm(function(){ card.remove(); hotelReinit(); }); }
 
+    
+    /* ===== EXPENSE TRACKING ===== */
+    var EXPENSE_CATS = {
+      flight: {emoji:'✈️', label:'항공권', color:'var(--tag-flight)'},
+      hotel: {emoji:'🏨', label:'숙소', color:'var(--tag-hotel)'},
+      meal: {emoji:'🍜', label:'식사', color:'var(--tag-food)'},
+      cafe: {emoji:'☕', label:'카페/간식', color:'var(--tag-cafe)'},
+      transport: {emoji:'🚌', label:'교통', color:'var(--tag-transport)'},
+      activity: {emoji:'🎡', label:'관광/체험', color:'var(--tag-spot)'},
+      souvenir: {emoji:'🎁', label:'기념품', color:'var(--tag-night)'},
+      etc: {emoji:'📦', label:'기타', color:'var(--border)'}
+    };
+
+    var DATE_TO_DAY = {'2026-04-17':'1','2026-04-18':'2','2026-04-19':'3','2026-04-20':'4'};
+    var DAY_TO_DATE = {'1':'2026-04-17','2':'2026-04-18','3':'2026-04-19','4':'2026-04-20'};
+    var DAY_BUDGET = {'1':756, '2':2200, '3':2400, '4':1400};
+    var TOTAL_BUDGET = 8820;
+    var NTD_TO_KRW = 45;
+
+    var _expenseDateFilter = 'all';
+    var _expenseCategoryFilter = 'all';
+    var _expenseCurrentCurrency = 'NTD';
+    var _expenseSelectedCategory = null;
+
+    function selectExpenseCategory(cat, e) {
+      e.preventDefault();
+      var btns = document.querySelectorAll('.cat-icon-btn');
+      btns.forEach(function(b) { b.classList.remove('selected'); });
+      e.currentTarget.classList.add('selected');
+      _expenseSelectedCategory = cat;
+      document.getElementById('ef-category').value = cat;
+    }
+
+    function toggleExpenseCurrency(curr, e) {
+      e.preventDefault();
+      var btns = document.querySelectorAll('.currency-btn');
+      btns.forEach(function(b) { b.classList.remove('active'); });
+      e.currentTarget.classList.add('active');
+      _expenseCurrentCurrency = curr;
+      updateExpenseConversion();
+    }
+
+    function updateExpenseConversion() {
+      var amt = parseFloat(document.getElementById('ef-amount').value) || 0;
+      var curr = _expenseCurrentCurrency;
+      var converted = 0;
+      if (curr === 'NTD') {
+        converted = Math.round(amt * NTD_TO_KRW);
+        document.getElementById('ef-converted').textContent = converted.toLocaleString() + ' KRW';
+        document.getElementById('ef-currency').textContent = 'NTD';
+      } else {
+        converted = Math.round(amt / NTD_TO_KRW * 100) / 100;
+        document.getElementById('ef-converted').textContent = converted.toLocaleString() + ' NTD';
+        document.getElementById('ef-currency').textContent = 'KRW';
+      }
+    }
+
+    function getDayFromDate(date) {
+      return DATE_TO_DAY[date] || 'all';
+    }
+
+    function getDayExpenseTotal(day) {
+      var expenses = lsLoad(LS.expense);
+      var total = 0;
+      expenses.forEach(function(e) {
+        if (day === 'all' || e.day === day) {
+          total += parseFloat(e.amountNTD) || 0;
+        }
+      });
+      return total;
+    }
+
+    function getCatExpenseTotal(cat) {
+      var expenses = lsLoad(LS.expense);
+      var total = 0;
+      expenses.forEach(function(e) {
+        if (cat === 'all' || e.category === cat) {
+          total += parseFloat(e.amountNTD) || 0;
+        }
+      });
+      return total;
+    }
+
+    function buildPlaceAutocomplete() {
+      var places = new Set();
+      // From food
+      var foods = document.querySelectorAll('#food-list .list-card h3');
+      foods.forEach(function(f) { places.add(f.textContent.trim()); });
+      // From cafe
+      var cafes = document.querySelectorAll('#cafe-list .list-card h3');
+      cafes.forEach(function(c) { places.add(c.textContent.trim()); });
+      // From hotel
+      var hotels = document.querySelectorAll('.hotel-name');
+      hotels.forEach(function(h) { places.add(h.textContent.trim()); });
+      // From localStorage
+      var expenses = lsLoad(LS.expense);
+      expenses.forEach(function(e) { if (e.place) places.add(e.place); });
+      
+      var datalist = document.getElementById('placeAutocompleteList');
+      datalist.innerHTML = '';
+      Array.from(places).forEach(function(place) {
+        var opt = document.createElement('option');
+        opt.value = place;
+        datalist.appendChild(opt);
+      });
+    }
+
+    function renderExpenseTable(dateFilter, catFilter) {
+      dateFilter = dateFilter || 'all';
+      catFilter = catFilter || 'all';
+      var expenses = lsLoad(LS.expense);
+      var tbody = document.getElementById('expenseTableBody');
+      var filtered = expenses.filter(function(e) {
+        var dateMatch = dateFilter === 'all' || e.day === dateFilter;
+        var catMatch = catFilter === 'all' || e.category === catFilter;
+        return dateMatch && catMatch;
+      });
+      filtered.sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr id="expenseEmptyState"><td colspan="7" style="text-align: center; padding: 32px; color: var(--text-secondary);">아직 기록된 경비가 없습니다.<br><button class="btn-add" onclick="openModal(\'expense\')" style="margin-top: 16px; padding: 8px 16px; font-size: 13px;">💸 +사용경비</button></td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = '';
+      filtered.forEach(function(e) {
+        var cat = EXPENSE_CATS[e.category] || {emoji:'📦', label:e.category};
+        var row = document.createElement('tr');
+        row.innerHTML = '<td>' + e.date + '</td><td>' + cat.emoji + ' ' + cat.label + '</td><td>' + e.amountNTD.toLocaleString() + '</td><td>₩' + e.amountKRW.toLocaleString() + '</td><td>' + (e.place || '—') + '</td><td>' + (e.link ? '<a href="' + e.link + '" target="_blank" rel="noopener">링크</a>' : '—') + '</td><td>';
+        var delBtn = document.createElement('button');
+        delBtn.className = 'btn-delete';
+        delBtn.innerHTML = DEL_SVG;
+        delBtn.style.cursor = 'pointer';
+        delBtn.onclick = (function(id) { return function(ev) { ev.stopPropagation(); showConfirm(function() { lsRemove(LS.expense, id); updateExpenseDisplays(); }); }; })(e._id);
+        row.appendChild(delBtn);
+        row.querySelector('td:last-child').appendChild(delBtn);
+        tbody.appendChild(row);
+      });
+    }
+
+    function updateExpenseDisplays() {
+      buildPlaceAutocomplete();
+      renderExpenseTable(_expenseDateFilter, _expenseCategoryFilter);
+      
+      var totalNTD = getDayExpenseTotal('all');
+      var totalKRW = Math.round(totalNTD * NTD_TO_KRW);
+      var percent = Math.round((totalNTD / TOTAL_BUDGET) * 100);
+      
+      document.getElementById('totalNTD').textContent = totalNTD.toLocaleString();
+      document.getElementById('totalKRW').textContent = '₩' + totalKRW.toLocaleString();
+      document.getElementById('budgetPercent').textContent = percent + '%';
+      var progressBar = document.getElementById('budgetProgressBar');
+      progressBar.style.width = Math.min(percent, 100) + '%';
+      progressBar.style.background = percent > 100 ? 'var(--negative)' : 'var(--positive)';
+      
+      // Update KPI card
+      var kpiActualVal = document.getElementById('kpiActualVal');
+      var kpiActualKrw = document.getElementById('kpiActualKrw');
+      var kpiExpenseBar = document.getElementById('kpiExpenseBar');
+      var kpiExpensePercent = document.getElementById('kpiExpensePercent');
+      if (kpiActualVal) {
+        kpiActualVal.textContent = totalNTD.toLocaleString() + ' NTD';
+        kpiActualVal.style.color = percent > 100 ? 'var(--negative)' : 'var(--positive)';
+        kpiActualKrw.textContent = '(₩' + totalKRW.toLocaleString() + ')';
+        kpiExpenseBar.style.width = Math.min(percent, 100) + '%';
+        kpiExpenseBar.style.background = percent > 100 ? 'var(--negative)' : 'var(--positive)';
+        kpiExpensePercent.textContent = '예산 대비 ' + percent + '%';
+        kpiExpensePercent.style.color = percent > 100 ? 'var(--negative)' : 'var(--text-secondary)';
+      }
+
+      // Update day headers if they exist
+      var dayExpenses = {'1': getDayExpenseTotal('1'), '2': getDayExpenseTotal('2'), '3': getDayExpenseTotal('3'), '4': getDayExpenseTotal('4')};
+      for (var day in dayExpenses) {
+        var dayCard = document.getElementById('dayExpenseCard' + day);
+        if (dayCard) {
+          var ntd = dayExpenses[day];
+          var krw = Math.round(ntd * NTD_TO_KRW);
+          var dayBudget = DAY_BUDGET[day] || 0;
+          var dayPercent = Math.round((ntd / dayBudget) * 100);
+          dayCard.querySelector('.expense-value').textContent = ntd.toLocaleString() + ' NTD (₩' + krw.toLocaleString() + ')';
+          var progBar = dayCard.querySelector('.expense-progress-bar');
+          progBar.style.width = Math.min(dayPercent, 100) + '%';
+          progBar.parentElement.classList.toggle('over', dayPercent > 100);
+        }
+      }
+    }
+
+    function filterExpenseByDate(day) {
+      _expenseDateFilter = day;
+      var btns = document.querySelectorAll('#panel-expense .expense-filters')[0].querySelectorAll('.region-btn');
+      btns.forEach(function(b) { b.classList.remove('active'); });
+      event.currentTarget.classList.add('active');
+      renderExpenseTable(_expenseDateFilter, _expenseCategoryFilter);
+    }
+
+    function filterExpenseByCategory(cat) {
+      _expenseCategoryFilter = cat;
+      var btns = document.querySelectorAll('#panel-expense .expense-filters')[1].querySelectorAll('.region-btn');
+      btns.forEach(function(b) { b.classList.remove('active'); });
+      event.currentTarget.classList.add('active');
+      renderExpenseTable(_expenseDateFilter, _expenseCategoryFilter);
+    }
+
+    function submitExpense() {
+      var date = document.getElementById('ef-date').value;
+      var category = document.getElementById('ef-category').value;
+      var amount = parseFloat(document.getElementById('ef-amount').value) || 0;
+      var place = document.getElementById('ef-place').value.trim();
+      var link = document.getElementById('ef-link').value.trim();
+
+      if (!date) { alert('사용일자를 선택해주세요.'); return; }
+      if (!category) { alert('카테고리를 선택해주세요.'); return; }
+      if (amount <= 0) { alert('금액을 입력해주세요.'); return; }
+      if (!place) { alert('사용처를 입력해주세요.'); return; }
+
+      var amountNTD = amount;
+      var amountKRW = Math.round(amount * NTD_TO_KRW);
+      if (_expenseCurrentCurrency === 'KRW') {
+        amountKRW = amount;
+        amountNTD = Math.round(amount / NTD_TO_KRW * 100) / 100;
+      }
+
+      var day = getDayFromDate(date);
+      var expense = {
+        date: date,
+        day: day,
+        category: category,
+        amountNTD: parseFloat(amountNTD),
+        amountKRW: Math.round(amountKRW),
+        place: place,
+        link: link
+      };
+
+      lsAdd(LS.expense, expense);
+      updateExpenseDisplays();
+      
+      document.getElementById('ef-date').value = '';
+      document.getElementById('ef-category').value = '';
+      document.getElementById('ef-amount').value = '';
+      document.getElementById('ef-place').value = '';
+      document.getElementById('ef-link').value = '';
+      document.getElementById('ef-converted').textContent = '0 KRW';
+      var catBtns = document.querySelectorAll('.cat-icon-btn');
+      catBtns.forEach(function(b) { b.classList.remove('selected'); });
+      _expenseSelectedCategory = null;
+      
+      closeModal('expense');
+      showPanel('expense');
+    }
+
+    
+    
+    // Initialize expense modal date to today
+    document.addEventListener('DOMContentLoaded', function() {
+      var today = new Date().toISOString().split('T')[0];
+      var dateInput = document.getElementById('ef-date');
+      if (dateInput) dateInput.value = today;
+    });
     document.addEventListener('DOMContentLoaded', initCrudBars);
 
     /* ===== SCROLL REVEAL ===== */
