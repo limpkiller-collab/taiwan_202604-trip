@@ -12,6 +12,23 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js"></script>
+  <!-- Firebase SDK (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <script>
+    var firebaseConfig = {
+      apiKey: "AIzaSyCJbue9jFzeUTWImTm1zbFQ6V3TDZp1i-0",
+      authDomain: "travel-dashboard-sync.firebaseapp.com",
+      databaseURL: "https://travel-dashboard-sync-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "travel-dashboard-sync",
+      storageBucket: "travel-dashboard-sync.firebasestorage.app",
+      messagingSenderId: "501772785879",
+      appId: "1:501772785879:web:f66a2a10911d16454d3892"
+    };
+    firebase.initializeApp(firebaseConfig);
+    var fbDB = firebase.database();
+    var FB_REF = 'dashboards/taichung2026';
+  </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html.theme-dark {
@@ -423,10 +440,29 @@
       .expense-table th, .expense-table td { padding: 8px 6px; }
       .day-expense-card { flex-direction: column; align-items: stretch; gap: 8px; }
     }
+
+    /* ===== SYNC STATUS ===== */
+    .sync-indicator { position: fixed; top: 16px; right: 68px; z-index: 9999; display: flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border); backdrop-filter: blur(12px); font-size: 12px; color: var(--text-secondary); cursor: pointer; transition: all 0.3s; }
+    .sync-indicator:hover { background: var(--surface-hover); }
+    .sync-indicator .sync-dot { width: 8px; height: 8px; border-radius: 50%; transition: background 0.3s; }
+    .sync-indicator .sync-dot.online { background: var(--positive); }
+    .sync-indicator .sync-dot.syncing { background: var(--warning); animation: syncPulse 1s infinite; }
+    .sync-indicator .sync-dot.offline { background: var(--negative); }
+    .sync-indicator .sync-dot.error { background: var(--negative); }
+    @keyframes syncPulse { 0%,100%{ opacity: 1; } 50%{ opacity: 0.3; } }
+    .sync-toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px); z-index: 99999; padding: 10px 20px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border); color: var(--text); font-size: 13px; opacity: 0; transition: all 0.4s ease; pointer-events: none; backdrop-filter: blur(12px); box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+    .sync-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   </style>
 </head>
 <body>
   <a href="#main-content" class="skip-link sr-only">Skip to content</a>
+  <!-- SYNC INDICATOR -->
+  <div class="sync-indicator" id="syncIndicator" onclick="manualSync()" title="동기화 상태 (클릭하면 수동 동기화)">
+    <span class="sync-dot offline" id="syncDot"></span>
+    <span id="syncLabel">연결 중…</span>
+  </div>
+  <!-- SYNC TOAST -->
+  <div class="sync-toast" id="syncToast"></div>
   <!-- MENU -->
   <div class="viz-menu">
     <button class="viz-menu-toggle" onclick="toggleMenu()" aria-label="Menu">
@@ -440,6 +476,8 @@
       <button onclick="exportData()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span>내 데이터 내보내기 📤</span></button>
       <button onclick="document.getElementById('importFileInput').click()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><span>데이터 불러오기 📥</span></button>
       <input type="file" id="importFileInput" accept=".json" style="display:none" onchange="importData(event)">
+      <div style="height:1px;background:var(--border);margin:4px 6px;"></div>
+      <button onclick="manualSync(); toggleMenu();"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 4v6h6"/><path d="M23 20v-6h-6"/><path d="M20.49 9A9 9 0 005.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 013.51 15"/></svg><span>클라우드 동기화 ☁️</span></button>
     </div>
   </div>
 
@@ -1828,7 +1866,7 @@
     /* ===== EXPORT / IMPORT ===== */
     function exportData() {
       var data = {
-        _version: 'tc_v10',
+        _version: 'tc_v11',
         _exported: new Date().toLocaleString('ko-KR'),
         food:     lsLoad(LS.food),
         cafe:     lsLoad(LS.cafe),
@@ -1855,7 +1893,7 @@
       reader.onload = function(e) {
         try {
           var data = JSON.parse(e.target.result);
-          if (!data._version || data._version !== 'tc_v8' && data._version !== 'tc_v10') {
+          if (!data._version || (data._version !== 'tc_v8' && data._version !== 'tc_v10' && data._version !== 'tc_v11')) {
             alert('파일 형식이 맞지 않아요.\n이 대시보드에서 내보낸 파일만 불러올 수 있어요.'); return;
           }
           var total = (data.food||[]).length + (data.cafe||[]).length + (data.schedule||[]).length + (data.hotel||[]).length + (data.expense||[]).length;
@@ -1900,12 +1938,162 @@
     /* ---- localStorage helpers ---- */
     var LS = { food:'tc_v8_food', cafe:'tc_v8_cafe', schedule:'tc_v8_schedule', hotel:'tc_v8_hotel', expense:'tc_v10_expense' };
     function lsLoad(key) { try { return JSON.parse(localStorage.getItem(key)||'[]'); } catch(e){ return []; } }
-    function lsSave(key, arr) { try { localStorage.setItem(key, JSON.stringify(arr)); } catch(e){} }
+    function lsSave(key, arr) {
+      try { localStorage.setItem(key, JSON.stringify(arr)); } catch(e){}
+      scheduleSyncToFirebase();
+    }
     function lsAdd(key, data) {
       var arr = lsLoad(key);
       data._id = Date.now()+'_'+Math.random().toString(36).slice(2);
       arr.push(data); lsSave(key, arr); return data._id;
     }
+
+    /* ======================================== */
+    /* ===== FIREBASE REALTIME SYNC (v11) ===== */
+    /* ======================================== */
+    var _syncTimer = null;
+    var _isSyncingFromRemote = false;
+    var _syncState = 'offline'; // online | syncing | offline | error
+    var _lastSyncTime = 0;
+
+    /* -- Sync Status UI -- */
+    function setSyncState(state, label) {
+      _syncState = state;
+      var dot = document.getElementById('syncDot');
+      var lbl = document.getElementById('syncLabel');
+      if (dot) { dot.className = 'sync-dot ' + state; }
+      if (lbl && label) { lbl.textContent = label; }
+    }
+
+    function showSyncToast(msg) {
+      var t = document.getElementById('syncToast');
+      if (!t) return;
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(function(){ t.classList.remove('show'); }, 2500);
+    }
+
+    /* -- Gather all LS data into one object -- */
+    function gatherAllData() {
+      return {
+        food:     lsLoad(LS.food),
+        cafe:     lsLoad(LS.cafe),
+        schedule: lsLoad(LS.schedule),
+        hotel:    lsLoad(LS.hotel),
+        expense:  lsLoad(LS.expense),
+        _ts:      Date.now(),
+        _version: 'tc_v11'
+      };
+    }
+
+    /* -- Push to Firebase (debounced 3s) -- */
+    function scheduleSyncToFirebase() {
+      if (_isSyncingFromRemote) return; // 수신 중엔 무시
+      if (_syncTimer) clearTimeout(_syncTimer);
+      _syncTimer = setTimeout(pushToFirebase, 3000);
+    }
+
+    function pushToFirebase() {
+      if (!fbDB) return;
+      setSyncState('syncing', '동기화 중…');
+      var data = gatherAllData();
+      fbDB.ref(FB_REF).set(data)
+        .then(function() {
+          _lastSyncTime = Date.now();
+          setSyncState('online', '최신');
+          showSyncToast('☁️ 클라우드 동기화 완료');
+        })
+        .catch(function(err) {
+          console.error('Firebase push error:', err);
+          setSyncState('error', '동기화 실패');
+          showSyncToast('⚠️ 동기화 실패 — 오프라인 상태일 수 있어요');
+        });
+    }
+
+    /* -- Listen for remote changes -- */
+    function startFirebaseListener() {
+      if (!fbDB) return;
+      fbDB.ref(FB_REF).on('value', function(snapshot) {
+        var remote = snapshot.val();
+        if (!remote || !remote._ts) {
+          // 원격 데이터 없음 → 로컬 데이터 push
+          var local = gatherAllData();
+          var hasData = local.food.length + local.cafe.length + local.schedule.length + local.hotel.length + local.expense.length;
+          if (hasData > 0) { pushToFirebase(); }
+          setSyncState('online', '최신');
+          return;
+        }
+        // 타임스탬프 비교: 원격이 더 최신이면 로컬 덮어쓰기
+        if (remote._ts > _lastSyncTime) {
+          _isSyncingFromRemote = true;
+          if (remote.food)     try { localStorage.setItem(LS.food,     JSON.stringify(remote.food));     } catch(e){}
+          if (remote.cafe)     try { localStorage.setItem(LS.cafe,     JSON.stringify(remote.cafe));     } catch(e){}
+          if (remote.schedule) try { localStorage.setItem(LS.schedule, JSON.stringify(remote.schedule)); } catch(e){}
+          if (remote.hotel)    try { localStorage.setItem(LS.hotel,    JSON.stringify(remote.hotel));    } catch(e){}
+          if (remote.expense !== undefined) try { localStorage.setItem(LS.expense, JSON.stringify(remote.expense || [])); } catch(e){}
+          _lastSyncTime = remote._ts;
+          // UI 새로고침
+          refreshAllUI();
+          _isSyncingFromRemote = false;
+          setSyncState('online', '최신');
+          showSyncToast('📲 다른 기기에서 변경사항 수신');
+        } else {
+          setSyncState('online', '최신');
+        }
+      }, function(err) {
+        console.error('Firebase listen error:', err);
+        setSyncState('error', '연결 오류');
+      });
+    }
+
+    /* -- Refresh all UI panels after remote sync -- */
+    function refreshAllUI() {
+      try {
+        // 맛집/카페/일정/숙소: renderCrudList가 있으면 호출
+        if (typeof renderFoodList === 'function') renderFoodList();
+        if (typeof renderCafeList === 'function') renderCafeList();
+        if (typeof renderScheduleList === 'function') renderScheduleList();
+        if (typeof renderHotelList === 'function') renderHotelList();
+        // 경비
+        if (typeof updateExpenseDisplays === 'function') updateExpenseDisplays();
+        if (typeof renderExpenseTable === 'function') renderExpenseTable();
+        // 호텔 캐러셀
+        if (typeof hotelReinit === 'function') hotelReinit();
+      } catch(e) { console.warn('refreshAllUI partial error:', e); }
+    }
+
+    /* -- Manual sync button -- */
+    function manualSync() {
+      pushToFirebase();
+    }
+
+    /* -- Online / Offline detection -- */
+    window.addEventListener('online', function() {
+      setSyncState('online', '연결됨');
+      pushToFirebase();
+    });
+    window.addEventListener('offline', function() {
+      setSyncState('offline', '오프라인');
+    });
+
+    /* -- Initialize sync on load -- */
+    document.addEventListener('DOMContentLoaded', function() {
+      if (navigator.onLine) {
+        setSyncState('syncing', '연결 중…');
+        // 첫 로드 시 로컬 타임스탬프 설정
+        _lastSyncTime = parseInt(localStorage.getItem('tc_v11_lastSync') || '0', 10);
+        startFirebaseListener();
+      } else {
+        setSyncState('offline', '오프라인');
+      }
+    });
+
+    // 페이지 나갈 때 마지막 동기화 시간 저장
+    window.addEventListener('beforeunload', function() {
+      if (_lastSyncTime) {
+        try { localStorage.setItem('tc_v11_lastSync', String(_lastSyncTime)); } catch(e){}
+      }
+    });
     function lsRemove(key, id) { lsSave(key, lsLoad(key).filter(function(d){ return d._id !== id; })); }
 
     /* ---- Delete button with confirm ---- */
