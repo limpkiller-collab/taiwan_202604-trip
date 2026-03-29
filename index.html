@@ -347,11 +347,13 @@
     @page { margin: 0.8in; }
 
     /* ===== CRUD ADD/DELETE ===== */
-    .panel-action-bar { display: flex; justify-content: flex-end; margin-bottom: 20px; }
-    .btn-add { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border-radius: 10px; border: none; background: var(--accent); color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; transition: opacity 0.2s; }
+    .panel-action-bar { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 20px; }
+    .btn-add { display: inline-flex; align-items: center; gap: 3px; padding: 4px 10px; border-radius: 6px; border: none; background: var(--accent); color: #fff; font-size: 11px; font-weight: 500; cursor: pointer; font-family: inherit; transition: opacity 0.2s; }
     .btn-add:hover { opacity: 0.85; }
     .btn-delete { position: absolute; top: 10px; right: 10px; width: 26px; height: 26px; border-radius: 6px; border: none; background: rgba(244,63,94,0.15); color: #f43f5e; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 13px; transition: background 0.15s; z-index: 2; }
     .btn-delete:hover { background: rgba(244,63,94,0.3); }
+    .btn-edit { position: absolute; top: 10px; right: 42px; width: 26px; height: 26px; border-radius: 6px; border: none; background: rgba(59,130,246,0.15); color: #3b82f6; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 13px; transition: background 0.15s; z-index: 2; }
+    .btn-edit:hover { background: rgba(59,130,246,0.3); }
     .list-card, .tl-card, .hotel-card { position: relative; }
     /* Modal */
     .modal-overlay { position: fixed; inset: 0; z-index: 10000; display: none; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); align-items: flex-end; justify-content: center; }
@@ -1635,7 +1637,7 @@
       
       <div class="form-row">
         <label>사용일자</label>
-        <input id="ef-date" type="date" value="" style="font-family: inherit;">
+        <input id="ef-date" type="date" value="" style="font-family: inherit; width: 100%; cursor: pointer;" onclick="this.showPicker && this.showPicker();">
       </div>
 
       <div class="form-row">
@@ -1683,7 +1685,7 @@
           <button type="button" class="currency-btn active" data-curr="NTD" onclick="toggleExpenseCurrency('NTD', event)">NTD</button>
           <button type="button" class="currency-btn" data-curr="KRW" onclick="toggleExpenseCurrency('KRW', event)">KRW</button>
         </div>
-        <input id="ef-amount" type="number" placeholder="금액 입력" min="0" step="0.01" onchange="updateExpenseConversion()" oninput="updateExpenseConversion()">
+        <input id="ef-amount" type="text" inputmode="decimal" placeholder="금액 입력" oninput="formatAmountInput(this); updateExpenseConversion();">
         <div class="converted-hint">
           <span id="ef-currency">NTD</span> → <span id="ef-converted">0 KRW</span>
         </div>
@@ -1705,7 +1707,7 @@
   </div>
 
   
-    <p>타이중 여행 대시보드 v10 · 2026.03.29 · 환율 기준: 1 NTD ≈ 45 KRW</p>
+    <p>타이중 여행 대시보드 v11 · 2026.03.29 · 환율 기준: 1 NTD ≈ 45 KRW</p>
   </footer>
 
   <script>
@@ -1920,6 +1922,7 @@
 
     /* ===== CRUD: ADD / DELETE ===== */
     var DEL_SVG = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+    var EDIT_SVG = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
     var MAP_SVG = '<svg class="map-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>';
 
     /* ---- Confirm Dialog ---- */
@@ -2104,16 +2107,36 @@
       return b;
     }
 
+    function makeEditBtn(onEdit) {
+      var b = document.createElement('button');
+      b.className = 'btn-edit'; b.title = '편집'; b.innerHTML = EDIT_SVG;
+      b.onclick = function(e) { e.stopPropagation(); onEdit(); };
+      return b;
+    }
+
     function addDeleteToExisting() {
       document.querySelectorAll('.list-card').forEach(function(c) {
         if (!c.querySelector('.btn-delete')) c.appendChild(makeDelBtn(function(){ c.remove(); }));
+        if (!c.querySelector('.btn-edit') && c.dataset.lid) {
+          var region = c.closest('.region-section');
+          var isFood = region && region.closest('#food-list');
+          var isCafe = region && region.closest('#cafe-list');
+          if (isFood) c.appendChild(makeEditBtn(function(){ editFood(c.dataset.lid); }));
+          else if (isCafe) c.appendChild(makeEditBtn(function(){ editCafe(c.dataset.lid); }));
+        }
       });
       document.querySelectorAll('.tl-item').forEach(function(item) {
         var card = item.querySelector('.tl-card');
         if (card && !card.querySelector('.btn-delete')) card.appendChild(makeDelBtn(function(){ item.remove(); }));
+        if (card && !card.querySelector('.btn-edit') && item.dataset.lid) {
+          card.appendChild(makeEditBtn(function(){ editSchedule(item.dataset.lid); }));
+        }
       });
       document.querySelectorAll('.hotel-card').forEach(function(card) {
         if (!card.querySelector('.btn-delete')) card.appendChild(makeDelBtn(function(){ card.remove(); hotelReinit(); }));
+        if (!card.querySelector('.btn-edit') && card.dataset.lid) {
+          card.appendChild(makeEditBtn(function(){ editHotel(card.dataset.lid); }));
+        }
       });
     }
 
@@ -2126,25 +2149,22 @@
         // Add expense button for schedule panel only
         if (p[0] === 'panel-schedule') {
           var expenseBtn = document.createElement('button'); expenseBtn.className = 'btn-add';
-          expenseBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> 💸 사용경비';
-          expenseBtn.onclick = function() { 
-            var today = new Date().toISOString().split('T')[0];
+          expenseBtn.innerHTML = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> 💸 사용경비';
+          expenseBtn.onclick = function() {
             var activeDay = document.querySelector('.day-tab.active');
+            var dateVal = new Date().toISOString().split('T')[0];
             if (activeDay) {
-              var dayText = activeDay.textContent;
-              if (dayText.includes('1')) today = '2026-04-17';
-              else if (dayText.includes('2')) today = '2026-04-18';
-              else if (dayText.includes('3')) today = '2026-04-19';
-              else if (dayText.includes('4')) today = '2026-04-20';
+              var dayIdx = Array.from(document.querySelectorAll('.day-tab')).indexOf(activeDay) + 1;
+              if (DAY_TO_DATE[String(dayIdx)]) dateVal = DAY_TO_DATE[String(dayIdx)];
             }
-            document.getElementById('ef-date').value = today;
+            document.getElementById('ef-date').value = dateVal;
             openModal('expense');
           };
           bar.appendChild(expenseBtn);
         }
         
         var btn = document.createElement('button'); btn.className = 'btn-add';
-        btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> ' + p[2];
+        btn.innerHTML = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> ' + p[2];
         (function(modal){ btn.onclick = function(){ openModal(modal); }; })(p[1]);
         bar.appendChild(btn); panel.insertBefore(bar, panel.firstChild);
       });
@@ -2158,8 +2178,96 @@
       };
     }
 
+    /* ---- Edit functions ---- */
+    var _editingId = null;
+    var _editingType = null;
+
+    function editFood(id) {
+      var items = lsLoad(LS.food);
+      var d = items.find(function(x) { return x._id === id; });
+      if (!d) return;
+      _editingId = id; _editingType = 'food';
+      document.getElementById('ff-name').value = d.name || '';
+      document.getElementById('ff-cn').value = d.cn || '';
+      document.getElementById('ff-region').value = d.region || '';
+      document.getElementById('ff-badge').value = d.badge || '';
+      document.getElementById('ff-desc').value = d.desc || '';
+      document.getElementById('ff-reco').value = d.reco || '';
+      document.getElementById('ff-addr').value = d.addr || '';
+      document.getElementById('ff-price').value = d.price || '';
+      document.getElementById('ff-map').value = d.map || '';
+      document.querySelector('#modal-food .modal-title').textContent = '🍜 맛집 편집';
+      document.querySelector('#modal-food .btn-submit').textContent = '저장하기';
+      openModal('food');
+    }
+
+    function editCafe(id) {
+      var items = lsLoad(LS.cafe);
+      var d = items.find(function(x) { return x._id === id; });
+      if (!d) return;
+      _editingId = id; _editingType = 'cafe';
+      document.getElementById('cf-name').value = d.name || '';
+      document.getElementById('cf-cn').value = d.cn || '';
+      document.getElementById('cf-region').value = d.region || '';
+      document.getElementById('cf-badge').value = d.badge || '';
+      document.getElementById('cf-desc').value = d.desc || '';
+      document.getElementById('cf-reco').value = d.reco || '';
+      document.getElementById('cf-addr').value = d.addr || '';
+      document.getElementById('cf-price').value = d.price || '';
+      document.getElementById('cf-map').value = d.map || '';
+      document.querySelector('#modal-cafe .modal-title').textContent = '☕ 카페 편집';
+      document.querySelector('#modal-cafe .btn-submit').textContent = '저장하기';
+      openModal('cafe');
+    }
+
+    function editSchedule(id) {
+      var items = lsLoad(LS.schedule);
+      var d = items.find(function(x) { return x._id === id; });
+      if (!d) return;
+      _editingId = id; _editingType = 'schedule';
+      document.getElementById('sf-day').value = d.day || '1';
+      document.getElementById('sf-time').value = d.time || '';
+      document.getElementById('sf-title').value = d.title || '';
+      document.getElementById('sf-desc').value = d.desc || '';
+      document.getElementById('sf-type').value = d.type || 'spot';
+      document.querySelector('#modal-schedule .modal-title').textContent = '📅 일정 편집';
+      document.querySelector('#modal-schedule .btn-submit').textContent = '저장하기';
+      openModal('schedule');
+    }
+
+    function editHotel(id) {
+      var items = lsLoad(LS.hotel);
+      var d = items.find(function(x) { return x._id === id; });
+      if (!d) return;
+      _editingId = id; _editingType = 'hotel';
+      document.getElementById('hf-name').value = d.name || '';
+      document.getElementById('hf-type').value = d.type || '';
+      document.getElementById('hf-region').value = d.region || '';
+      document.getElementById('hf-cin').value = d.cin || '';
+      document.getElementById('hf-cout').value = d.cout || '';
+      document.getElementById('hf-nights').value = d.nights || '';
+      document.getElementById('hf-booking').value = d.booking || '';
+      document.getElementById('hf-price').value = d.price || '';
+      document.getElementById('hf-map').value = d.map || '';
+      document.querySelector('#modal-hotel .modal-title').textContent = '🏨 숙소 편집';
+      document.querySelector('#modal-hotel .btn-submit').textContent = '저장하기';
+      openModal('hotel');
+    }
+
+    function clearEditState() {
+      _editingId = null; _editingType = null;
+      document.querySelector('#modal-food .modal-title').textContent = '🍜 맛집 추가';
+      document.querySelector('#modal-food .btn-submit').textContent = '추가하기';
+      document.querySelector('#modal-cafe .modal-title').textContent = '☕ 카페 추가';
+      document.querySelector('#modal-cafe .btn-submit').textContent = '추가하기';
+      document.querySelector('#modal-schedule .modal-title').textContent = '📅 일정 추가';
+      document.querySelector('#modal-schedule .btn-submit').textContent = '추가하기';
+      document.querySelector('#modal-hotel .modal-title').textContent = '🏨 숙소 추가';
+      document.querySelector('#modal-hotel .btn-submit').textContent = '추가하기';
+    }
+
     function openModal(name) { document.getElementById('modal-'+name).classList.add('open'); document.body.style.overflow='hidden'; }
-    function closeModal(name) { document.getElementById('modal-'+name).classList.remove('open'); document.body.style.overflow=''; }
+    function closeModal(name) { document.getElementById('modal-'+name).classList.remove('open'); document.body.style.overflow=''; clearEditState(); }
 
     /* ---- Card builder helpers ---- */
     var BADGE_FOOD = {'badge-must':'필수 맛집','badge-night':'야시장','badge-dessert':'디저트','badge-local':'로컬','badge-hotpot':'훠궈','badge-tea':'티하우스','badge-view':'뷰 맛집','badge-local-rec':'#현지인맛집'};
@@ -2172,6 +2280,7 @@
       var card=document.createElement('div'); card.className='list-card'; if(id) card.dataset.lid=id;
       card.innerHTML='<div class="list-card-header"><div><h3>'+d.name+'</h3>'+(d.cn?'<div class="cn-name">'+d.cn+'</div>':'')+'</div><span class="badge-type '+d.badge+'">'+(BADGE_FOOD[d.badge]||d.badge)+'</span></div>'+(d.desc?'<div class="list-desc">'+d.desc+'</div>':'')+(d.reco?'<div class="reco">추천: '+d.reco+'</div>':'')+(d.addr?'<div class="address">'+d.addr+'</div>':'')+'<div class="list-meta">'+(d.price?'<span class="price">~'+d.price+' NTD'+krw+'</span>':'')+(d.map?'<a class="map-link" href="'+d.map+'" target="_blank" rel="noopener">'+MAP_SVG+'구글지도</a>':'')+'</div>';
       card.appendChild(makeDelBtn(function(){ if(id) lsRemove(LS.food,id); card.remove(); }));
+      card.appendChild(makeEditBtn(function(){ editFood(id); }));
       return card;
     }
     function buildCafeCard(d, id) {
@@ -2179,12 +2288,14 @@
       var card=document.createElement('div'); card.className='list-card'; if(id) card.dataset.lid=id;
       card.innerHTML='<div class="list-card-header"><div><h3>'+d.name+'</h3>'+(d.cn?'<div class="cn-name">'+d.cn+'</div>':'')+'</div><span class="badge-type '+d.badge+'">'+(BADGE_CAFE[d.badge]||d.badge)+'</span></div>'+(d.desc?'<div class="list-desc">'+d.desc+'</div>':'')+(d.reco?'<div class="reco-cafe">추천: '+d.reco+'</div>':'')+(d.addr?'<div class="address">'+d.addr+'</div>':'')+'<div class="list-meta">'+(d.price?'<span class="price">~'+d.price+' NTD'+krw+'</span>':'')+(d.map?'<a class="map-link" href="'+d.map+'" target="_blank" rel="noopener">'+MAP_SVG+'구글지도</a>':'')+'</div>';
       card.appendChild(makeDelBtn(function(){ if(id) lsRemove(LS.cafe,id); card.remove(); }));
+      card.appendChild(makeEditBtn(function(){ editCafe(id); }));
       return card;
     }
     function buildScheduleItem(d, id) {
       var item=document.createElement('div'); item.className='tl-item'; if(id) item.dataset.lid=id;
       item.innerHTML='<div class="tl-dot" style="border-color:'+DAY_COLOR[d.day]+';"></div><div class="tl-card">'+(d.time?'<div class="tl-time">'+d.time+'</div>':'')+'<div class="tl-title">'+d.title+'</div>'+(d.desc?'<div class="tl-desc">'+d.desc+'</div>':'')+'<div class="tl-tags"><span class="tag tag-'+d.type+'">'+TAG_LABEL[d.type]+'</span></div></div>';
       item.querySelector('.tl-card').appendChild(makeDelBtn(function(){ if(id) lsRemove(LS.schedule,id); item.remove(); }));
+      item.querySelector('.tl-card').appendChild(makeEditBtn(function(){ editSchedule(id); }));
       return item;
     }
     function buildHotelCard(d, id) {
@@ -2193,6 +2304,7 @@
       var card=document.createElement('div'); card.className='hotel-card'; if(id) card.dataset.lid=id;
       card.innerHTML='<div class="hotel-card-header"><div class="hotel-name">'+d.name+'</div><span class="hotel-type-badge">'+d.type+'</span></div><div class="hotel-info-grid"><div class="hotel-info-item"><div class="hotel-info-label">지역</div><div class="hotel-info-value">'+(d.region||'—')+'</div></div><div class="hotel-info-item"><div class="hotel-info-label">예약</div><div class="hotel-info-value">'+d.booking+'</div></div><div class="hotel-info-item"><div class="hotel-info-label">체크인</div><div class="hotel-info-value">'+(d.cin||'—')+'</div></div><div class="hotel-info-item"><div class="hotel-info-label">체크아웃</div><div class="hotel-info-value">'+(d.cout||'—')+'</div></div></div>'+(totalNtd?'<div class="hotel-price-row"><div class="hotel-price-item"><div class="hotel-price-label">총 금액</div><div class="hotel-price-value">'+totalNtd.toLocaleString()+' NTD</div><div class="hotel-price-krw">≈ ₩'+krwTotal+'</div></div>'+(perNight?'<div class="hotel-price-item"><div class="hotel-price-label">1박 요금</div><div class="hotel-price-value">'+perNight.toLocaleString()+' NTD</div><div class="hotel-price-krw">≈ ₩'+krwNight+'</div></div>':'')+'</div>':'')+'<div class="hotel-footer"><a class="hotel-btn hotel-btn-booking" href="javascript:void(0)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>'+d.booking+' 예약</a>'+(d.map?'<a class="hotel-btn hotel-btn-map" href="'+d.map+'" target="_blank" rel="noopener"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>구글지도</a>':'')+'</div>';
       card.appendChild(makeDelBtn(function(){ if(id) lsRemove(LS.hotel,id); card.remove(); hotelReinit(); }));
+      card.appendChild(makeEditBtn(function(){ editHotel(id); }));
       return card;
     }
 
@@ -2227,8 +2339,16 @@
              title:document.getElementById('sf-title').value.trim(), desc:document.getElementById('sf-desc').value.trim(),
              type:document.getElementById('sf-type').value};
       if (!d.title) { alert('제목을 입력해주세요.'); return; }
-      var id=lsAdd(LS.schedule, d);
-      document.getElementById('day'+d.day).querySelector('.timeline').appendChild(buildScheduleItem(d, id));
+      if (_editingId && _editingType === 'schedule') {
+        var items = lsLoad(LS.schedule);
+        var idx = items.findIndex(function(x){ return x._id === _editingId; });
+        if (idx >= 0) { d._id = _editingId; items[idx] = d; lsSave(LS.schedule, items); }
+        var old = document.querySelector('[data-lid="'+_editingId+'"]');
+        if (old) { old.replaceWith(buildScheduleItem(d, _editingId)); }
+      } else {
+        var id=lsAdd(LS.schedule, d);
+        document.getElementById('day'+d.day).querySelector('.timeline').appendChild(buildScheduleItem(d, id));
+      }
       ['sf-time','sf-title','sf-desc'].forEach(function(i){ document.getElementById(i).value=''; });
       closeModal('schedule');
     }
@@ -2240,9 +2360,17 @@
              addr:document.getElementById('ff-addr').value.trim(), price:document.getElementById('ff-price').value.trim(),
              map:document.getElementById('ff-map').value.trim()};
       if (!d.name) { alert('이름을 입력해주세요.'); return; }
-      var id=lsAdd(LS.food, d);
-      var sec=document.querySelector('#food-list .region-section[data-region="'+d.region+'"]');
-      if (sec) { var g=sec.querySelector('.list-grid'); if(!g){g=document.createElement('div');g.className='list-grid';sec.appendChild(g);} g.appendChild(buildFoodCard(d,id)); }
+      if (_editingId && _editingType === 'food') {
+        var items = lsLoad(LS.food);
+        var idx = items.findIndex(function(x){ return x._id === _editingId; });
+        if (idx >= 0) { d._id = _editingId; items[idx] = d; lsSave(LS.food, items); }
+        var old = document.querySelector('[data-lid="'+_editingId+'"]');
+        if (old) { old.replaceWith(buildFoodCard(d, _editingId)); }
+      } else {
+        var id=lsAdd(LS.food, d);
+        var sec=document.querySelector('#food-list .region-section[data-region="'+d.region+'"]');
+        if (sec) { var g=sec.querySelector('.list-grid'); if(!g){g=document.createElement('div');g.className='list-grid';sec.appendChild(g);} g.appendChild(buildFoodCard(d,id)); }
+      }
       ['ff-name','ff-cn','ff-desc','ff-reco','ff-addr','ff-price','ff-map'].forEach(function(i){ document.getElementById(i).value=''; });
       closeModal('food');
     }
@@ -2254,9 +2382,17 @@
              addr:document.getElementById('cf-addr').value.trim(), price:document.getElementById('cf-price').value.trim(),
              map:document.getElementById('cf-map').value.trim()};
       if (!d.name) { alert('이름을 입력해주세요.'); return; }
-      var id=lsAdd(LS.cafe, d);
-      var sec=document.querySelector('#cafe-list .region-section[data-region="'+d.region+'"]');
-      if (sec) { var g=sec.querySelector('.list-grid'); if(!g){g=document.createElement('div');g.className='list-grid';sec.appendChild(g);} g.appendChild(buildCafeCard(d,id)); }
+      if (_editingId && _editingType === 'cafe') {
+        var items = lsLoad(LS.cafe);
+        var idx = items.findIndex(function(x){ return x._id === _editingId; });
+        if (idx >= 0) { d._id = _editingId; items[idx] = d; lsSave(LS.cafe, items); }
+        var old = document.querySelector('[data-lid="'+_editingId+'"]');
+        if (old) { old.replaceWith(buildCafeCard(d, _editingId)); }
+      } else {
+        var id=lsAdd(LS.cafe, d);
+        var sec=document.querySelector('#cafe-list .region-section[data-region="'+d.region+'"]');
+        if (sec) { var g=sec.querySelector('.list-grid'); if(!g){g=document.createElement('div');g.className='list-grid';sec.appendChild(g);} g.appendChild(buildCafeCard(d,id)); }
+      }
       ['cf-name','cf-cn','cf-desc','cf-reco','cf-addr','cf-price','cf-map'].forEach(function(i){ document.getElementById(i).value=''; });
       closeModal('cafe');
     }
@@ -2268,9 +2404,18 @@
              booking:document.getElementById('hf-booking').value, price:document.getElementById('hf-price').value.trim(),
              map:document.getElementById('hf-map').value.trim()};
       if (!d.name) { alert('숙소명을 입력해주세요.'); return; }
-      var id=lsAdd(LS.hotel, d);
-      document.getElementById('hotelTrack').appendChild(buildHotelCard(d, id));
-      hotelReinit();
+      if (_editingId && _editingType === 'hotel') {
+        var items = lsLoad(LS.hotel);
+        var idx = items.findIndex(function(x){ return x._id === _editingId; });
+        if (idx >= 0) { d._id = _editingId; items[idx] = d; lsSave(LS.hotel, items); }
+        var old = document.querySelector('[data-lid="'+_editingId+'"]');
+        if (old) { old.replaceWith(buildHotelCard(d, _editingId)); }
+        hotelReinit();
+      } else {
+        var id=lsAdd(LS.hotel, d);
+        document.getElementById('hotelTrack').appendChild(buildHotelCard(d, id));
+        hotelReinit();
+      }
       ['hf-name','hf-region','hf-cin','hf-cout','hf-nights','hf-price','hf-map'].forEach(function(i){ document.getElementById(i).value=''; });
       closeModal('hotel');
     }
@@ -2301,6 +2446,16 @@
     var _expenseCurrentCurrency = 'NTD';
     var _expenseSelectedCategory = null;
 
+    function formatAmountInput(el) {
+      var val = el.value.replace(/[^\d.]/g, '');
+      var parts = val.split('.');
+      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+      el.value = parts.length > 1 ? parts[0] + '.' + parts[1] : parts[0];
+    }
+    function getAmountValue() {
+      return parseFloat((document.getElementById('ef-amount').value || '0').replace(/,/g, '')) || 0;
+    }
+
     function selectExpenseCategory(cat, e) {
       e.preventDefault();
       var btns = document.querySelectorAll('.cat-icon-btn');
@@ -2320,22 +2475,22 @@
     }
 
     function updateExpenseConversion() {
-      var amt = parseFloat(document.getElementById('ef-amount').value) || 0;
+      var amt = getAmountValue();
       var curr = _expenseCurrentCurrency;
       var converted = 0;
       if (curr === 'NTD') {
         converted = Math.round(amt * NTD_TO_KRW);
-        document.getElementById('ef-converted').textContent = converted.toLocaleString() + ' KRW';
+        document.getElementById('ef-converted').textContent = Number(converted).toLocaleString() + ' KRW';
         document.getElementById('ef-currency').textContent = 'NTD';
       } else {
         converted = Math.round(amt / NTD_TO_KRW * 100) / 100;
-        document.getElementById('ef-converted').textContent = converted.toLocaleString() + ' NTD';
+        document.getElementById('ef-converted').textContent = Number(converted).toLocaleString() + ' NTD';
         document.getElementById('ef-currency').textContent = 'KRW';
       }
     }
 
     function getDayFromDate(date) {
-      return DATE_TO_DAY[date] || 'all';
+      return DATE_TO_DAY[date] || 'pre';
     }
 
     function getDayExpenseTotal(day) {
@@ -2405,14 +2560,14 @@
       filtered.forEach(function(e) {
         var cat = EXPENSE_CATS[e.category] || {emoji:'📦', label:e.category};
         var row = document.createElement('tr');
-        row.innerHTML = '<td>' + e.date + '</td><td>' + cat.emoji + ' ' + cat.label + '</td><td>' + e.amountNTD.toLocaleString() + '</td><td>₩' + e.amountKRW.toLocaleString() + '</td><td>' + (e.place || '—') + '</td><td>' + (e.link ? '<a href="' + e.link + '" target="_blank" rel="noopener">링크</a>' : '—') + '</td><td>';
+        var dayLabel = DATE_TO_DAY[e.date] ? 'D' + DATE_TO_DAY[e.date] + ' ' : '';
+        row.innerHTML = '<td>' + dayLabel + e.date + '</td><td>' + cat.emoji + ' ' + cat.label + '</td><td>' + Number(e.amountNTD).toLocaleString() + '</td><td>₩' + Number(e.amountKRW).toLocaleString() + '</td><td>' + (e.place || '—') + '</td><td>' + (e.link ? '<a href="' + e.link + '" target="_blank" rel="noopener">링크</a>' : '—') + '</td><td class="expense-action-cell"></td>';
+        var actionCell = row.querySelector('.expense-action-cell');
         var delBtn = document.createElement('button');
-        delBtn.className = 'btn-delete';
+        delBtn.className = 'btn-delete'; delBtn.style.position='static'; delBtn.style.width='24px'; delBtn.style.height='24px';
         delBtn.innerHTML = DEL_SVG;
-        delBtn.style.cursor = 'pointer';
         delBtn.onclick = (function(id) { return function(ev) { ev.stopPropagation(); showConfirm(function() { lsRemove(LS.expense, id); updateExpenseDisplays(); }); }; })(e._id);
-        row.appendChild(delBtn);
-        row.querySelector('td:last-child').appendChild(delBtn);
+        actionCell.appendChild(delBtn);
         tbody.appendChild(row);
       });
     }
@@ -2483,7 +2638,7 @@
     function submitExpense() {
       var date = document.getElementById('ef-date').value;
       var category = document.getElementById('ef-category').value;
-      var amount = parseFloat(document.getElementById('ef-amount').value) || 0;
+      var amount = getAmountValue();
       var place = document.getElementById('ef-place').value.trim();
       var link = document.getElementById('ef-link').value.trim();
 
