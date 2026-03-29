@@ -1,4 +1,23 @@
 <!DOCTYPE html>
+<!--
+  ============================================================
+  타이중 여행 대시보드 — Version History
+  ============================================================
+  v3  (2026.03.29) : 초기 버전, 기본 일정/맛집/카페/숙소 레이아웃
+  v4  (2026.03.29) : CRUD 기능 추가 (추가/삭제 모달)
+  v5  (2026.03.29) : 사용경비 추적 패널, 일자별 경비 프로그레스바
+  v6  (2026.03.29) : 예산 섹션, KPI 카드 경비 연동, 카테고리 필터
+  v7  (2026.03.29) : 숙소 캐러셀, 지역 필터, JSON 내보내기/불러오기
+  v8  (2026.03.29) : 다크/라이트 테마 토글, PWA 메타태그, 인쇄 최적화
+  v10 (2026.03.29) : localStorage 영구 저장, 예산 자동 계산 개선
+  v11 (2026.03.29) : Firebase Realtime DB 동기화, 편집 기능,
+                      달력 showPicker, 금액 콤마 포맷, 비여행일 경비 등록,
+                      버튼 사이즈 축소
+  v12 (2026.03.29) : 편집/삭제 버튼을 ⋮ 더보기 드롭다운으로 통합,
+                      하드코딩 카드도 편집 가능 (LS 자동 변환),
+                      총 예상 경비에 항공권 ₩233,769 추가 (총 ₩633,000)
+  ============================================================
+-->
 <html lang="ko" class="theme-dark">
 <head>
   <meta charset="UTF-8">
@@ -350,10 +369,17 @@
     .panel-action-bar { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 20px; }
     .btn-add { display: inline-flex; align-items: center; gap: 3px; padding: 4px 10px; border-radius: 6px; border: none; background: var(--accent); color: #fff; font-size: 11px; font-weight: 500; cursor: pointer; font-family: inherit; transition: opacity 0.2s; }
     .btn-add:hover { opacity: 0.85; }
-    .btn-delete { position: absolute; top: 10px; right: 10px; width: 26px; height: 26px; border-radius: 6px; border: none; background: rgba(244,63,94,0.15); color: #f43f5e; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 13px; transition: background 0.15s; z-index: 2; }
-    .btn-delete:hover { background: rgba(244,63,94,0.3); }
-    .btn-edit { position: absolute; top: 10px; right: 42px; width: 26px; height: 26px; border-radius: 6px; border: none; background: rgba(59,130,246,0.15); color: #3b82f6; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 13px; transition: background 0.15s; z-index: 2; }
-    .btn-edit:hover { background: rgba(59,130,246,0.3); }
+    .btn-more { position: absolute; top: 10px; right: 10px; width: 28px; height: 28px; border-radius: 6px; border: none; background: rgba(255,255,255,0.08); color: var(--text-secondary); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; transition: all 0.15s; z-index: 2; }
+    .btn-more:hover { background: rgba(255,255,255,0.15); color: var(--text); }
+    .card-dropdown { position: absolute; top: 42px; right: 10px; z-index: 100; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); min-width: 120px; overflow: hidden; display: none; animation: fadeInDrop 0.15s ease; }
+    .card-dropdown.show { display: block; }
+    @keyframes fadeInDrop { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+    .card-dropdown-item { display: flex; align-items: center; gap: 8px; padding: 10px 14px; font-size: 13px; color: var(--text); cursor: pointer; transition: background 0.12s; border: none; background: none; width: 100%; font-family: inherit; }
+    .card-dropdown-item:hover { background: var(--surface-hover); }
+    .card-dropdown-item.danger { color: #f43f5e; }
+    .card-dropdown-item.danger:hover { background: rgba(244,63,94,0.1); }
+    .expense-action-cell .btn-delete { position: static; width: 24px; height: 24px; border-radius: 6px; border: none; background: rgba(244,63,94,0.15); color: #f43f5e; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 13px; transition: background 0.15s; }
+    .expense-action-cell .btn-delete:hover { background: rgba(244,63,94,0.3); }
     .list-card, .tl-card, .hotel-card { position: relative; }
     /* Modal */
     .modal-overlay { position: fixed; inset: 0; z-index: 10000; display: none; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); align-items: flex-end; justify-content: center; }
@@ -514,9 +540,9 @@
         </div>
         <div class="kpi-card animate delay-4" id="kpiBudgetCard">
           <span class="kpi-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--day4)" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></span>
-          <span class="kpi-label">예상 경비</span>
-          <span class="kpi-value">~8,820 NTD</span>
-          <span class="kpi-sub">약 397,000원 (항공 제외)</span>
+          <span class="kpi-label">예상 경비 (항공 포함)</span>
+          <span class="kpi-value">~₩633,000</span>
+          <span class="kpi-sub">현지 ~8,820 NTD + 항공 ₩233,769</span>
           <div id="kpiExpenseActual" style="margin-top:8px;font-size:12px;color:var(--text-secondary);">실제 사용: <strong id="kpiActualVal" style="color:var(--positive);">0 NTD</strong> <span id="kpiActualKrw">(₩0)</span></div>
           <div class="expense-progress" style="margin-top:6px;"><div class="expense-progress-bar" id="kpiExpenseBar" style="width:0%;"></div></div>
           <div id="kpiExpensePercent" style="font-size:11px;color:var(--text-secondary);margin-top:2px;">예산 대비 0%</div>
@@ -1382,8 +1408,14 @@
       <!-- ==================== PANEL: BUDGET ==================== -->
       <div class="main-panel" id="panel-budget">
         <div class="budget-section">
-          <h2>예상 경비 (항공 제외)</h2>
+          <h2>예상 경비</h2>
           <div class="budget-grid">
+            <div class="budget-card">
+              <h3>✈️ 항공권</h3>
+              <div class="budget-row"><span class="label">가는편 TW669 (인천→타이중)</span><span class="amount"><span class="krw">₩116,885</span></span></div>
+              <div class="budget-row"><span class="label">오는편 TW670 (타이중→인천)</span><span class="amount"><span class="krw">₩116,884</span></span></div>
+              <div class="budget-total"><span>항공 소계</span><span><span class="krw">₩233,769</span></span></div>
+            </div>
             <div class="budget-card">
               <h3>🚌 교통비</h3>
               <div class="budget-row"><span class="label">이지카드</span><span class="amount">100 NTD<span class="krw">₩4,500</span></span></div>
@@ -1413,7 +1445,8 @@
               <div class="budget-row"><span class="label">식비</span><span class="amount">2,460 NTD<span class="krw">₩110,700</span></span></div>
               <div class="budget-row"><span class="label">관광/체험</span><span class="amount">1,500 NTD<span class="krw">₩67,500</span></span></div>
               <div class="budget-row"><span class="label">숙소 (3박)</span><span class="amount">2,400 NTD<span class="krw">₩108,000</span></span></div>
-              <div class="budget-total"><span>합계 (항공 제외)</span><span style="color:var(--accent); font-size: 18px;">~8,860 NTD<br><span class="krw" style="font-size:14px;">약 ₩399,000</span></span></div>
+              <div class="budget-row"><span class="label">✈️ 항공권</span><span class="amount"><span class="krw">₩233,769</span></span></div>
+              <div class="budget-total"><span>총 합계</span><span style="color:var(--accent); font-size: 18px;">~8,860 NTD + ₩233,769<br><span class="krw" style="font-size:14px;">약 ₩633,000</span></span></div>
             </div>
           </div>
         </div>
@@ -1707,7 +1740,7 @@
   </div>
 
   
-    <p>타이중 여행 대시보드 v11 · 2026.03.29 · 환율 기준: 1 NTD ≈ 45 KRW</p>
+    <p>타이중 여행 대시보드 v12 · 2026.03.29 · 환율 기준: 1 NTD ≈ 45 KRW</p>
   </footer>
 
   <script>
@@ -1895,7 +1928,7 @@
       reader.onload = function(e) {
         try {
           var data = JSON.parse(e.target.result);
-          if (!data._version || (data._version !== 'tc_v8' && data._version !== 'tc_v10' && data._version !== 'tc_v11')) {
+          if (!data._version || (data._version !== 'tc_v8' && data._version !== 'tc_v10' && data._version !== 'tc_v11' && data._version !== 'tc_v12')) {
             alert('파일 형식이 맞지 않아요.\n이 대시보드에서 내보낸 파일만 불러올 수 있어요.'); return;
           }
           var total = (data.food||[]).length + (data.cafe||[]).length + (data.schedule||[]).length + (data.hotel||[]).length + (data.expense||[]).length;
@@ -1923,6 +1956,7 @@
     /* ===== CRUD: ADD / DELETE ===== */
     var DEL_SVG = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
     var EDIT_SVG = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
+    var MORE_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>';
     var MAP_SVG = '<svg class="map-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>';
 
     /* ---- Confirm Dialog ---- */
@@ -1952,7 +1986,7 @@
     }
 
     /* ======================================== */
-    /* ===== FIREBASE REALTIME SYNC (v11) ===== */
+    /* ===== FIREBASE REALTIME SYNC (v12) ===== */
     /* ======================================== */
     var _syncTimer = null;
     var _isSyncingFromRemote = false;
@@ -1985,7 +2019,7 @@
         hotel:    lsLoad(LS.hotel),
         expense:  lsLoad(LS.expense),
         _ts:      Date.now(),
-        _version: 'tc_v11'
+        _version: 'tc_v12'
       };
     }
 
@@ -2084,7 +2118,7 @@
       if (navigator.onLine) {
         setSyncState('syncing', '연결 중…');
         // 첫 로드 시 로컬 타임스탬프 설정
-        _lastSyncTime = parseInt(localStorage.getItem('tc_v11_lastSync') || '0', 10);
+        _lastSyncTime = parseInt(localStorage.getItem('tc_v12_lastSync') || '0', 10);
         startFirebaseListener();
       } else {
         setSyncState('offline', '오프라인');
@@ -2094,49 +2128,89 @@
     // 페이지 나갈 때 마지막 동기화 시간 저장
     window.addEventListener('beforeunload', function() {
       if (_lastSyncTime) {
-        try { localStorage.setItem('tc_v11_lastSync', String(_lastSyncTime)); } catch(e){}
+        try { localStorage.setItem('tc_v12_lastSync', String(_lastSyncTime)); } catch(e){}
       }
     });
     function lsRemove(key, id) { lsSave(key, lsLoad(key).filter(function(d){ return d._id !== id; })); }
 
-    /* ---- Delete button with confirm ---- */
-    function makeDelBtn(onDel) {
-      var b = document.createElement('button');
-      b.className = 'btn-delete'; b.title = '삭제'; b.innerHTML = DEL_SVG;
-      b.onclick = function(e) { e.stopPropagation(); showConfirm(onDel); };
-      return b;
+    /* ---- More button with dropdown menu ---- */
+    function makeMoreBtn(onEdit, onDel) {
+      var wrap = document.createElement('div');
+      wrap.style.cssText = 'position:absolute;top:0;right:0;z-index:2;';
+      var btn = document.createElement('button');
+      btn.className = 'btn-more'; btn.title = '더보기'; btn.innerHTML = MORE_SVG;
+      var dd = document.createElement('div');
+      dd.className = 'card-dropdown';
+      if (onEdit) {
+        var editItem = document.createElement('button');
+        editItem.className = 'card-dropdown-item';
+        editItem.innerHTML = EDIT_SVG + ' 편집하기';
+        editItem.onclick = function(e) { e.stopPropagation(); dd.classList.remove('show'); onEdit(); };
+        dd.appendChild(editItem);
+      }
+      var delItem = document.createElement('button');
+      delItem.className = 'card-dropdown-item danger';
+      delItem.innerHTML = DEL_SVG + ' 삭제하기';
+      delItem.onclick = function(e) { e.stopPropagation(); dd.classList.remove('show'); showConfirm(onDel); };
+      dd.appendChild(delItem);
+      btn.onclick = function(e) {
+        e.stopPropagation();
+        // Close all other open dropdowns
+        document.querySelectorAll('.card-dropdown.show').forEach(function(d) { if(d !== dd) d.classList.remove('show'); });
+        dd.classList.toggle('show');
+      };
+      wrap.appendChild(btn);
+      wrap.appendChild(dd);
+      return wrap;
     }
 
-    function makeEditBtn(onEdit) {
-      var b = document.createElement('button');
-      b.className = 'btn-edit'; b.title = '편집'; b.innerHTML = EDIT_SVG;
-      b.onclick = function(e) { e.stopPropagation(); onEdit(); };
-      return b;
-    }
+    /* ---- Close dropdowns when clicking elsewhere ---- */
+    document.addEventListener('click', function() { document.querySelectorAll('.card-dropdown.show').forEach(function(d) { d.classList.remove('show'); }); });
 
     function addDeleteToExisting() {
+      // Food/Cafe cards
       document.querySelectorAll('.list-card').forEach(function(c) {
-        if (!c.querySelector('.btn-delete')) c.appendChild(makeDelBtn(function(){ c.remove(); }));
-        if (!c.querySelector('.btn-edit') && c.dataset.lid) {
-          var region = c.closest('.region-section');
-          var isFood = region && region.closest('#food-list');
-          var isCafe = region && region.closest('#cafe-list');
-          if (isFood) c.appendChild(makeEditBtn(function(){ editFood(c.dataset.lid); }));
-          else if (isCafe) c.appendChild(makeEditBtn(function(){ editCafe(c.dataset.lid); }));
+        if (c.querySelector('.btn-more')) return;
+        var region = c.closest('.region-section');
+        var isFood = region && region.closest('#food-list');
+        var isCafe = region && region.closest('#cafe-list');
+        var editFn = null;
+        if (c.dataset.lid) {
+          if (isFood) editFn = function(){ editFood(c.dataset.lid); };
+          else if (isCafe) editFn = function(){ editCafe(c.dataset.lid); };
+        } else {
+          // Hardcoded card: convert to LS on edit
+          if (isFood) editFn = function(){ editHardcodedFood(c); };
+          else if (isCafe) editFn = function(){ editHardcodedCafe(c); };
         }
+        c.appendChild(makeMoreBtn(editFn, function(){
+          if(c.dataset.lid) { if(isFood) lsRemove(LS.food, c.dataset.lid); else if(isCafe) lsRemove(LS.cafe, c.dataset.lid); }
+          c.remove();
+        }));
       });
+      // Schedule items
       document.querySelectorAll('.tl-item').forEach(function(item) {
         var card = item.querySelector('.tl-card');
-        if (card && !card.querySelector('.btn-delete')) card.appendChild(makeDelBtn(function(){ item.remove(); }));
-        if (card && !card.querySelector('.btn-edit') && item.dataset.lid) {
-          card.appendChild(makeEditBtn(function(){ editSchedule(item.dataset.lid); }));
+        if (!card || card.querySelector('.btn-more')) return;
+        var editFn = null;
+        if (item.dataset.lid) {
+          editFn = function(){ editSchedule(item.dataset.lid); };
+        } else {
+          editFn = function(){ editHardcodedSchedule(item); };
         }
+        card.appendChild(makeMoreBtn(editFn, function(){
+          if(item.dataset.lid) lsRemove(LS.schedule, item.dataset.lid);
+          item.remove();
+        }));
       });
+      // Hotel cards
       document.querySelectorAll('.hotel-card').forEach(function(card) {
-        if (!card.querySelector('.btn-delete')) card.appendChild(makeDelBtn(function(){ card.remove(); hotelReinit(); }));
-        if (!card.querySelector('.btn-edit') && card.dataset.lid) {
-          card.appendChild(makeEditBtn(function(){ editHotel(card.dataset.lid); }));
-        }
+        if (card.querySelector('.btn-more')) return;
+        var editFn = card.dataset.lid ? function(){ editHotel(card.dataset.lid); } : function(){ editHardcodedHotel(card); };
+        card.appendChild(makeMoreBtn(editFn, function(){
+          if(card.dataset.lid) lsRemove(LS.hotel, card.dataset.lid);
+          card.remove(); hotelReinit();
+        }));
       });
     }
 
@@ -2269,6 +2343,101 @@
     function openModal(name) { document.getElementById('modal-'+name).classList.add('open'); document.body.style.overflow='hidden'; }
     function closeModal(name) { document.getElementById('modal-'+name).classList.remove('open'); document.body.style.overflow=''; clearEditState(); }
 
+    /* ---- Hardcoded-to-LS conversion functions ---- */
+    function editHardcodedSchedule(item) {
+      var card = item.querySelector('.tl-card');
+      var time = card.querySelector('.tl-time') ? card.querySelector('.tl-time').textContent.trim() : '';
+      var title = card.querySelector('.tl-title') ? card.querySelector('.tl-title').textContent.trim() : '';
+      var desc = card.querySelector('.tl-desc') ? card.querySelector('.tl-desc').textContent.trim() : '';
+      var tagEl = card.querySelector('.tag');
+      var type = 'spot';
+      if (tagEl) {
+        var cls = tagEl.className;
+        ['flight','food','cafe','spot','hotel','transport','night'].forEach(function(t) { if (cls.indexOf('tag-'+t) > -1) type = t; });
+      }
+      var dayContent = item.closest('.day-content');
+      var day = '1';
+      if (dayContent) { var m = dayContent.id.match(/day(\d)/); if(m) day = m[1]; }
+      var id = 'ls_' + Date.now() + '_' + Math.random().toString(36).substr(2,5);
+      var d = { _id: id, day: day, time: time, title: title, desc: desc, type: type };
+      var items = lsLoad(LS.schedule);
+      items.push(d);
+      lsSave(LS.schedule, items);
+      item.dataset.lid = id;
+      editSchedule(id);
+    }
+
+    function editHardcodedFood(card) {
+      var name = card.querySelector('h3') ? card.querySelector('h3').textContent.trim() : '';
+      var cn = card.querySelector('.cn-name') ? card.querySelector('.cn-name').textContent.trim() : '';
+      var desc = card.querySelector('.list-desc') ? card.querySelector('.list-desc').textContent.trim() : '';
+      var reco = card.querySelector('.reco') ? card.querySelector('.reco').textContent.replace('추천: ','').trim() : '';
+      var addr = card.querySelector('.address') ? card.querySelector('.address').textContent.trim() : '';
+      var mapLink = card.querySelector('.map-link'); var map = mapLink ? mapLink.href : '';
+      var priceEl = card.querySelector('.price'); var price = '';
+      if (priceEl) { var pm = priceEl.textContent.match(/~?(\d+)\s*NTD/); if(pm) price = pm[1]; }
+      var badgeEl = card.querySelector('.badge-type'); var badge = '';
+      if (badgeEl) { badgeEl.classList.forEach(function(c) { if(c.startsWith('badge-') && c!=='badge-type') badge = c; }); }
+      var region = card.closest('.region-section'); var regionVal = region ? region.dataset.region : '';
+      var id = 'ls_' + Date.now() + '_' + Math.random().toString(36).substr(2,5);
+      var d = { _id: id, name: name, cn: cn, region: regionVal, badge: badge, desc: desc, reco: reco, addr: addr, price: price, map: map };
+      var items = lsLoad(LS.food);
+      items.push(d);
+      lsSave(LS.food, items);
+      card.dataset.lid = id;
+      editFood(id);
+    }
+
+    function editHardcodedCafe(card) {
+      var name = card.querySelector('h3') ? card.querySelector('h3').textContent.trim() : '';
+      var cn = card.querySelector('.cn-name') ? card.querySelector('.cn-name').textContent.trim() : '';
+      var desc = card.querySelector('.list-desc') ? card.querySelector('.list-desc').textContent.trim() : '';
+      var reco = card.querySelector('.reco-cafe') ? card.querySelector('.reco-cafe').textContent.replace('추천: ','').trim() : '';
+      var addr = card.querySelector('.address') ? card.querySelector('.address').textContent.trim() : '';
+      var mapLink = card.querySelector('.map-link'); var map = mapLink ? mapLink.href : '';
+      var priceEl = card.querySelector('.price'); var price = '';
+      if (priceEl) { var pm = priceEl.textContent.match(/~?(\d+)\s*NTD/); if(pm) price = pm[1]; }
+      var badgeEl = card.querySelector('.badge-type'); var badge = '';
+      if (badgeEl) { badgeEl.classList.forEach(function(c) { if(c.startsWith('badge-') && c!=='badge-type') badge = c; }); }
+      var region = card.closest('.region-section'); var regionVal = region ? region.dataset.region : '';
+      var id = 'ls_' + Date.now() + '_' + Math.random().toString(36).substr(2,5);
+      var d = { _id: id, name: name, cn: cn, region: regionVal, badge: badge, desc: desc, reco: reco, addr: addr, price: price, map: map };
+      var items = lsLoad(LS.cafe);
+      items.push(d);
+      lsSave(LS.cafe, items);
+      card.dataset.lid = id;
+      editCafe(id);
+    }
+
+    function editHardcodedHotel(card) {
+      var name = card.querySelector('.hotel-name') ? card.querySelector('.hotel-name').textContent.trim() : '';
+      var type = card.querySelector('.hotel-type-badge') ? card.querySelector('.hotel-type-badge').textContent.trim() : '';
+      var infoItems = card.querySelectorAll('.hotel-info-item');
+      var region='', booking='', cin='', cout='';
+      infoItems.forEach(function(it) {
+        var label = it.querySelector('.hotel-info-label');
+        var value = it.querySelector('.hotel-info-value');
+        if (!label || !value) return;
+        var l = label.textContent.trim();
+        if(l==='지역') region = value.textContent.trim();
+        if(l==='예약') booking = value.textContent.trim();
+        if(l==='체크인') cin = value.textContent.trim();
+        if(l==='체크아웃') cout = value.textContent.trim();
+      });
+      var priceEl = card.querySelector('.hotel-price-value');
+      var price = '';
+      if(priceEl) { var pm = priceEl.textContent.match(/([\d,]+)\s*NTD/); if(pm) price = pm[1].replace(/,/g,''); }
+      var mapLink = card.querySelector('.hotel-btn-map'); var map = mapLink ? mapLink.href : '';
+      var nights = '3';
+      var id = 'ls_' + Date.now() + '_' + Math.random().toString(36).substr(2,5);
+      var d = { _id: id, name: name, type: type, region: region, cin: cin, cout: cout, nights: nights, booking: booking, price: price, map: map };
+      var items = lsLoad(LS.hotel);
+      items.push(d);
+      lsSave(LS.hotel, items);
+      card.dataset.lid = id;
+      editHotel(id);
+    }
+
     /* ---- Card builder helpers ---- */
     var BADGE_FOOD = {'badge-must':'필수 맛집','badge-night':'야시장','badge-dessert':'디저트','badge-local':'로컬','badge-hotpot':'훠궈','badge-tea':'티하우스','badge-view':'뷰 맛집','badge-local-rec':'#현지인맛집'};
     var BADGE_CAFE = {'badge-cafe-type':'스페셜티','badge-local-rec':'#현지인카페','badge-dessert':'디저트 카페','badge-view':'뷰 카페','badge-tea':'대만차','badge-local':'로컬 감성'};
@@ -2279,23 +2448,20 @@
       var ntd=parseInt(d.price)||0, krw=ntd?' <span class="krw">(₩'+Math.round(ntd*45).toLocaleString()+')</span>':'';
       var card=document.createElement('div'); card.className='list-card'; if(id) card.dataset.lid=id;
       card.innerHTML='<div class="list-card-header"><div><h3>'+d.name+'</h3>'+(d.cn?'<div class="cn-name">'+d.cn+'</div>':'')+'</div><span class="badge-type '+d.badge+'">'+(BADGE_FOOD[d.badge]||d.badge)+'</span></div>'+(d.desc?'<div class="list-desc">'+d.desc+'</div>':'')+(d.reco?'<div class="reco">추천: '+d.reco+'</div>':'')+(d.addr?'<div class="address">'+d.addr+'</div>':'')+'<div class="list-meta">'+(d.price?'<span class="price">~'+d.price+' NTD'+krw+'</span>':'')+(d.map?'<a class="map-link" href="'+d.map+'" target="_blank" rel="noopener">'+MAP_SVG+'구글지도</a>':'')+'</div>';
-      card.appendChild(makeDelBtn(function(){ if(id) lsRemove(LS.food,id); card.remove(); }));
-      card.appendChild(makeEditBtn(function(){ editFood(id); }));
+      card.appendChild(makeMoreBtn(function(){ editFood(id); }, function(){ if(id) lsRemove(LS.food,id); card.remove(); }));
       return card;
     }
     function buildCafeCard(d, id) {
       var ntd=parseInt(d.price)||0, krw=ntd?' <span class="krw">(₩'+Math.round(ntd*45).toLocaleString()+')</span>':'';
       var card=document.createElement('div'); card.className='list-card'; if(id) card.dataset.lid=id;
       card.innerHTML='<div class="list-card-header"><div><h3>'+d.name+'</h3>'+(d.cn?'<div class="cn-name">'+d.cn+'</div>':'')+'</div><span class="badge-type '+d.badge+'">'+(BADGE_CAFE[d.badge]||d.badge)+'</span></div>'+(d.desc?'<div class="list-desc">'+d.desc+'</div>':'')+(d.reco?'<div class="reco-cafe">추천: '+d.reco+'</div>':'')+(d.addr?'<div class="address">'+d.addr+'</div>':'')+'<div class="list-meta">'+(d.price?'<span class="price">~'+d.price+' NTD'+krw+'</span>':'')+(d.map?'<a class="map-link" href="'+d.map+'" target="_blank" rel="noopener">'+MAP_SVG+'구글지도</a>':'')+'</div>';
-      card.appendChild(makeDelBtn(function(){ if(id) lsRemove(LS.cafe,id); card.remove(); }));
-      card.appendChild(makeEditBtn(function(){ editCafe(id); }));
+      card.appendChild(makeMoreBtn(function(){ editCafe(id); }, function(){ if(id) lsRemove(LS.cafe,id); card.remove(); }));
       return card;
     }
     function buildScheduleItem(d, id) {
       var item=document.createElement('div'); item.className='tl-item'; if(id) item.dataset.lid=id;
       item.innerHTML='<div class="tl-dot" style="border-color:'+DAY_COLOR[d.day]+';"></div><div class="tl-card">'+(d.time?'<div class="tl-time">'+d.time+'</div>':'')+'<div class="tl-title">'+d.title+'</div>'+(d.desc?'<div class="tl-desc">'+d.desc+'</div>':'')+'<div class="tl-tags"><span class="tag tag-'+d.type+'">'+TAG_LABEL[d.type]+'</span></div></div>';
-      item.querySelector('.tl-card').appendChild(makeDelBtn(function(){ if(id) lsRemove(LS.schedule,id); item.remove(); }));
-      item.querySelector('.tl-card').appendChild(makeEditBtn(function(){ editSchedule(id); }));
+      item.querySelector('.tl-card').appendChild(makeMoreBtn(function(){ editSchedule(id); }, function(){ if(id) lsRemove(LS.schedule,id); item.remove(); }));
       return item;
     }
     function buildHotelCard(d, id) {
@@ -2303,8 +2469,7 @@
       var krwTotal=Math.round(totalNtd*45).toLocaleString(), krwNight=Math.round(perNight*45).toLocaleString();
       var card=document.createElement('div'); card.className='hotel-card'; if(id) card.dataset.lid=id;
       card.innerHTML='<div class="hotel-card-header"><div class="hotel-name">'+d.name+'</div><span class="hotel-type-badge">'+d.type+'</span></div><div class="hotel-info-grid"><div class="hotel-info-item"><div class="hotel-info-label">지역</div><div class="hotel-info-value">'+(d.region||'—')+'</div></div><div class="hotel-info-item"><div class="hotel-info-label">예약</div><div class="hotel-info-value">'+d.booking+'</div></div><div class="hotel-info-item"><div class="hotel-info-label">체크인</div><div class="hotel-info-value">'+(d.cin||'—')+'</div></div><div class="hotel-info-item"><div class="hotel-info-label">체크아웃</div><div class="hotel-info-value">'+(d.cout||'—')+'</div></div></div>'+(totalNtd?'<div class="hotel-price-row"><div class="hotel-price-item"><div class="hotel-price-label">총 금액</div><div class="hotel-price-value">'+totalNtd.toLocaleString()+' NTD</div><div class="hotel-price-krw">≈ ₩'+krwTotal+'</div></div>'+(perNight?'<div class="hotel-price-item"><div class="hotel-price-label">1박 요금</div><div class="hotel-price-value">'+perNight.toLocaleString()+' NTD</div><div class="hotel-price-krw">≈ ₩'+krwNight+'</div></div>':'')+'</div>':'')+'<div class="hotel-footer"><a class="hotel-btn hotel-btn-booking" href="javascript:void(0)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>'+d.booking+' 예약</a>'+(d.map?'<a class="hotel-btn hotel-btn-map" href="'+d.map+'" target="_blank" rel="noopener"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>구글지도</a>':'')+'</div>';
-      card.appendChild(makeDelBtn(function(){ if(id) lsRemove(LS.hotel,id); card.remove(); hotelReinit(); }));
-      card.appendChild(makeEditBtn(function(){ editHotel(id); }));
+      card.appendChild(makeMoreBtn(function(){ editHotel(id); }, function(){ if(id) lsRemove(LS.hotel,id); card.remove(); hotelReinit(); }));
       return card;
     }
 
